@@ -1,7 +1,6 @@
 SoundFilePlayerOSC {
 	var <soundfile;
 	var <buffer;
-	var <isCued;
 	var <playheadPosition;
 	var <startPosition=0;
 	var <endPosition=1;
@@ -27,7 +26,8 @@ SoundFilePlayerOSC {
 				var replyID = msg[2];
 				var value = msg[3];
 
-				value = value + this.cuePosition;
+				//value = value + this.cuePosition;
+				value = value + this.startPosition;
 
 				if (this.node.notNil, {
 					if(this.node.nodeID == nodeID
@@ -57,17 +57,12 @@ SoundFilePlayerOSC {
 				\pan, this.pan,
 				\rate,this.rate
 			]));
-			if(this.isCued==false, {
-				this.reCue(startPosition);
-			})
 		});
 		if(oldPlayState == \paused, {
 			if(this.node.notNil, {
 				this.node.set(\run,1);
 			});
 		});
-
-		this.isCued_(false);
 	}
 
 	pause {
@@ -93,14 +88,10 @@ SoundFilePlayerOSC {
 
 	reCue {arg position=0;
 		"recue".postln;
-		this.buffer.cueSoundFile(this.soundfile.path,position);
-		this.cuePosition_(position);
-		this.changed(\buffer);
-		this.isCued_(true);
+
 	}
 
 	soundfile_ {arg newSoundfile;
-		this.isCued_(false);
 		soundfile = newSoundfile;
 		this.changed(\soundfile);
 		this.buffer_(
@@ -109,19 +100,13 @@ SoundFilePlayerOSC {
 				bufferSize:(Server.local.options.blockSize * (2**4))
 		  )
 		);
-		this.cuePosition_(0);
-		this.isCued_(true);
+		//this.cuePosition_(0);
 		this.setBoundaries(0,soundfile.numFrames);
 	}
 
 	buffer_ {arg newBuffer;
 		buffer = newBuffer;
 		this.changed(\buffer);
-	}
-
-	isCued_ {arg newIsCued;
-		isCued = newIsCued;
-		this.changed(\isCued);
 	}
 
 	freeAll {
@@ -171,9 +156,10 @@ SoundFilePlayerOSC {
 	}
 
 	movePlayhead {arg newPlayheadPosition;
-		"start method movePlayhead".postln;
 		this.playheadPosition_(newPlayheadPosition);
-		this.reCue(newPlayheadPosition);
+		this.buffer.cueSoundFile(this.soundfile.path,this.playheadPosition);
+		//this.cuePosition_(this.playheadPosition);
+		this.changed(\buffer);
 	}
 
 	isInBoundaries {arg position;
@@ -181,7 +167,7 @@ SoundFilePlayerOSC {
 		if(this.startPosition.notNil && this.endPosition.notNil, {
 			var lo = min(this.startPosition, this.endPosition);
 			var hi = max(this.startPosition, this.endPosition);
-			isInBoundaries = (lo<=position && position<=hi)
+			isInBoundaries = ((lo<=position) && (position<=hi))
 		}, {
 			isInBoundaries=true;
 		});
@@ -203,3 +189,4 @@ SoundFilePlayerOSC {
 	}
 
 }
+
