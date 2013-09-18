@@ -11,10 +11,7 @@ SoundFilePlayerOSC {
 	var <out=0;
 	var <playState=\stopped;
 	var <>oscPositionReceiver;
-	var <>cuePosition;
 	var <loopMode=\noLoop;
-	var <>globalFilePosition=0;
-	var <>offset=0;
 
 	*new {
 		^super.new.init;
@@ -22,32 +19,27 @@ SoundFilePlayerOSC {
 
 	init {
 		this.oscPositionReceiver_(
-			OSCdef((\diskin ++ UniqueID.next).asSymbol, {arg msg;
+			OSCdef((\SweepPosition ++ UniqueID.next).asSymbol, {arg msg;
 				var cmdName = msg[0];
 				var nodeID = msg[1];
 				var replyID = msg[2];
 				var value = msg[3];
 
-				//value = value - this.cuePosition;
-				//value = value + this.startPosition;
-
 				if (this.node.notNil, {
 					if(this.node.nodeID == nodeID
-						&& replyID == 1
-						&& cmdName=='/diskin', {
-							//("Node "++nodeID++" is currently at position "++value).postln;
-
-							this.globalFilePosition_(value);
-
+						&& replyID == 0
+						&& cmdName=='/SweepPosition', {
+							("Node "++nodeID++" is currently at position "++value).postln;
 							if (this.isInBoundaries(value), {
-								this.playheadPosition_(value);
-							}, {
-								//("Node "++nodeID++" reached end at "++value).postln;
-								this.reachedEndAction;
+								this.playheadPosition=value;
+								this.changed(\playheadPosition);
+								}, {
+									("Node "++nodeID++" reached end at "++value).postln;
+									this.reachedEndAction;
 							})
 					});
 				});
-		  }, '/diskin', Server.local.addr));
+		  }, '/SweepPosition', Server.local.addr));
 	}
 
 	play {
@@ -60,7 +52,10 @@ SoundFilePlayerOSC {
 				\bufnum, this.buffer.bufnum,
 				\amp, this.amp,
 				\pan, this.pan,
-				\rate,this.rate
+				\rate,this.rate,
+				\t_trig,1,
+				\startPosition,this.startPosition,
+				\endPosition,this.endPosition,
 			]));
 		});
 		if(oldPlayState == \paused, {
@@ -83,7 +78,6 @@ SoundFilePlayerOSC {
 			this.node.free;
 		});
 		this.node_(nil);
-		this.globalFilePosition_(0);
 		this.movePlayhead(this.startPosition);
 	}
 
@@ -163,10 +157,14 @@ SoundFilePlayerOSC {
 	movePlayhead {arg newPlayheadPosition;
 		this.playheadPosition_(newPlayheadPosition);
 		this.buffer.cueSoundFile(this.soundfile.path,this.playheadPosition);
-		this.cuePosition_(this.playheadPosition);
-		this_offset_(this.globalFilePosition + this.playheadPosition);
+		if( this.isInBoundaries(newPlayheadPosition), {
+			if(this.node.notNil, {
+				this.node.set(\startPosition,this.playheadPosition,\t_trig,1);
+		  });
+		}, {
+			this.stop;
+		});
 		this.changed(\buffer);
-
 	}
 
 	isInBoundaries {arg position;
