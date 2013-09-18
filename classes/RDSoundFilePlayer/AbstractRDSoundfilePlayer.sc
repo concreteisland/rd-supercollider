@@ -1,3 +1,0 @@
-AbstractRDSoundfilePlayer {
-	var <>message;
-}
