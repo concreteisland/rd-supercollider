@@ -175,6 +175,8 @@
 
 ~soundfile
 
-~model.reCue(0)
+~model.dump
+
+s.scope
 
 

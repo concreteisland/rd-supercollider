@@ -13,6 +13,8 @@ SoundFilePlayerOSC {
 	var <>oscPositionReceiver;
 	var <>cuePosition;
 	var <loopMode=\noLoop;
+	var <>globalFilePosition=0;
+	var <>offset=0;
 
 	*new {
 		^super.new.init;
@@ -26,14 +28,17 @@ SoundFilePlayerOSC {
 				var replyID = msg[2];
 				var value = msg[3];
 
-				//value = value + this.cuePosition;
-				value = value + this.startPosition;
+				//value = value - this.cuePosition;
+				//value = value + this.startPosition;
 
 				if (this.node.notNil, {
 					if(this.node.nodeID == nodeID
 						&& replyID == 1
 						&& cmdName=='/diskin', {
 							//("Node "++nodeID++" is currently at position "++value).postln;
+
+							this.globalFilePosition_(value);
+
 							if (this.isInBoundaries(value), {
 								this.playheadPosition_(value);
 							}, {
@@ -78,6 +83,7 @@ SoundFilePlayerOSC {
 			this.node.free;
 		});
 		this.node_(nil);
+		this.globalFilePosition_(0);
 		this.movePlayhead(this.startPosition);
 	}
 
@@ -100,7 +106,6 @@ SoundFilePlayerOSC {
 				bufferSize:(Server.local.options.blockSize * (2**4))
 		  )
 		);
-		//this.cuePosition_(0);
 		this.setBoundaries(0,soundfile.numFrames);
 	}
 
@@ -158,8 +163,10 @@ SoundFilePlayerOSC {
 	movePlayhead {arg newPlayheadPosition;
 		this.playheadPosition_(newPlayheadPosition);
 		this.buffer.cueSoundFile(this.soundfile.path,this.playheadPosition);
-		//this.cuePosition_(this.playheadPosition);
+		this.cuePosition_(this.playheadPosition);
+		this_offset_(this.globalFilePosition + this.playheadPosition);
 		this.changed(\buffer);
+
 	}
 
 	isInBoundaries {arg position;
