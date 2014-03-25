@@ -16,5 +16,6 @@ p.gui;
 p.gui
 
 
-p.set(\shaperBuffer,[1,1,1,1,1,1])
+p.set(\shaperBuffer,[1,1,1,0,1,1])
 p.shaperBuffer.value
+p.shaperBuffer.dependants

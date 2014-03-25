@@ -39,7 +39,9 @@ ChebyEditor : KrNumberEditor {
 }
 
 ChebyEditorGui : KrNumberEditorGui {
+	var knobs;
 	guiBody { arg layout,bounds;
+		knobs = List.new;
 		model.chebyAmps.do({arg amp,i;
 			var knob = EZKnob(
 				parent: layout,
@@ -50,6 +52,17 @@ ChebyEditorGui : KrNumberEditorGui {
 				initVal: amp,
 				initAction: false
 			);
+			knobs.add(knob);
 		});
 	}
+
+	update { arg model;
+		knobs.do({arg knob,i;
+			var amp = model.chebyAmps[i];
+			knob.value_(amp);
+		})
+
+	}
+
+
 }
