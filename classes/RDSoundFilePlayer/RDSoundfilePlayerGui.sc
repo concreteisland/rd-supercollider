@@ -8,7 +8,7 @@ RDSoundfilePlayerGui : ObjectGui {
 	var <rateSlider;
 	var <loopModeSelection;
 	var <ampSlider;
-	var <outbusNumberbox;
+	var <outBusNumberbox;
 
 	guiBody { arg layout,bounds;
 		bounds = (bounds ?? {layout.indentedRemaining}).asRect;
@@ -19,8 +19,15 @@ RDSoundfilePlayerGui : ObjectGui {
 		soundfileView.timeCursorOn = true;
 		soundfileView.timeCursorColor = Color.white;
 		soundfileView.setSelectionColor (1, Color.clear);
-		soundfileView.mouseUpAction = {};
-		soundfileView.mouseDownAction = {};
+		soundfileView.mouseUpAction = {arg soundfileView, x, y;
+			var currentSelection, lowerBoundary, upperBoundary;
+			currentSelection = soundfileView.selection(soundfileView.currentSelection);
+			lowerBoundary = currentSelection[0];
+			upperBoundary = lowerBoundary + currentSelection[1];
+			model.setBoundaries(lowerBoundary,upperBoundary);
+		};
+		soundfileView.mouseDownAction = {arg soundfileView, x, y;
+		};
 		soundfileView.mouseMoveAction = {};
 		this.updateSoundfile;
 
@@ -83,7 +90,9 @@ RDSoundfilePlayerGui : ObjectGui {
 			bounds: 240@20,
 			label: "Rate",
 			controlSpec: ControlSpec(-2,2),
-			action: {},
+			action: {arg slider;
+				model.setRate(slider.value);
+			},
 			initVal: 1,
 			numberWidth:36,
 			labelWidth:24
@@ -105,12 +114,14 @@ RDSoundfilePlayerGui : ObjectGui {
 
 		layout.startRow;
 
-		outbusNumberbox = EZNumber.new (
+		outBusNumberbox = EZNumber.new (
 			parent: view,
 			bounds: 80@20,
 			label: "OutBus",
 			controlSpec: ControlSpec(step:1,maxval:99999),
-			action: {},
+			action: {arg numberbox;
+				model.outBus_(numberbox.value);
+			},
 			initVal: 0,
 			layout: \horz,
 			labelWidth: 40,
@@ -122,9 +133,23 @@ RDSoundfilePlayerGui : ObjectGui {
 		this.updateSoundfile;
 		this.updatePlayPauseStopButton;
 		this.updateLoopMode;
+		this.updateRate;
+		this.updateOutBus;
 	}
 
 	updateSoundfile {
+		AppClock.sched(0.0,{
+			var currentSelection = soundfileView.selection(soundfileView.currentSelection);
+			var lowerBoundary = currentSelection[0];
+			var upperBoundary = lowerBoundary + currentSelection[1];
+			if((model.lowerBoundary != lowerBoundary) || (model.upperBoundary != upperBoundary), {
+				var selection = [
+					model.lowerBoundary,
+					model.upperBoundary - model.lowerBoundary
+				];
+				soundfileView.setSelection(soundfileView.currentSelection,selection);
+			});
+		});
 		if(model.soundfile != soundfileView.soundfile, {
 			soundfileView.soundfile = model.soundfile;
 			if(not(soundfileView.soundfile.isOpen), {
@@ -183,6 +208,22 @@ RDSoundfilePlayerGui : ObjectGui {
 				});
 			}
 		);
+	}
+
+	updateRate {
+		if(rateSlider.value != model.rate, {
+			AppClock.sched(0.0,{
+				rateSlider.value_(model.rate);
+			});
+		});
+	}
+
+	updateOutBus {
+		if(outBusNumberbox.value != model.outBus, {
+			AppClock.sched(0.0,{
+				outBusNumberbox.value_(model.outBus);
+			});
+		});
 	}
 
 	viewDidClose {

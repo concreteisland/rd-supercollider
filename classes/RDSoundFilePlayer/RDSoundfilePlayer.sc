@@ -1,4 +1,4 @@
-RDSoundFilePlayer {
+RDSoundfilePlayer {
 	var <id;
 	var <buffer;
 	var <soundfile;
@@ -6,15 +6,11 @@ RDSoundFilePlayer {
 	var <synth;
 	var <synthDef;
 	var <rate = 1;
-	var <rateInternal = 1;
 	var <lowerBoundary = 0;
 	var <upperBoundary = 1;
-	var <lowerBoundaryInternal = 0;
-	var <upperBoundaryInternal = 1;
 	var <position = 0;
-	var <positionInternal = 0;
 	var <startPosition = 0;
-	var <startPositionInternal = 0;
+	var <outBus = 0;
 
 	var <loopModeNoLoop = \noLoop;
 	var <loopModeLooping = \loop;
@@ -31,7 +27,7 @@ RDSoundFilePlayer {
 	var <statusPaused = \paused;
 	var <statusStopped = \stopped;
 
-	var guiClass = RDSoundfilePlayerGui;
+
 
 	*new {arg argServer;
 		var instance = super.new;
@@ -88,16 +84,21 @@ RDSoundFilePlayer {
 	}
 
 	setRate {arg argRate;
-		argRate = argRate * buffer.sampleRate;
 		rate = argRate;
 		this.prUpdateSynth(\rate, rate);
 		this.prSetStartPosition;
 		this.changed;
 	}
 
+	outBus_ {arg argOutBus;
+		outBus = argOutBus;
+		this.prUpdateSynth(\outBus, outBus);
+		this.changed;
+	}
+
 	setBoundaries {arg argBoundary1, argBoundary2;
-		argBoundary1 = argBoundary1.linlin(0,1,0,buffer.numFrames);
-		argBoundary2 = argBoundary2.linlin(0,1,0,buffer.numFrames);
+		//argBoundary1 = argBoundary1.linlin(0,1,0,buffer.numFrames);
+		//argBoundary2 = argBoundary2.linlin(0,1,0,buffer.numFrames);
 
 		lowerBoundary = min(argBoundary1,argBoundary2);
 		upperBoundary = max(argBoundary1,argBoundary2);
@@ -136,7 +137,7 @@ RDSoundFilePlayer {
 	}
 
 	guiClass {
-		^guiClass;
+		^RDSoundfilePlayerGui;
 	}
 
 	status {
@@ -180,7 +181,7 @@ RDSoundFilePlayer {
 				});
 				buffer = soundfile.asBuffer(server);
 				server.sync;
-				this.setBoundaries(0,1);
+				this.setBoundaries(0,buffer.numFrames);
 				this.setRate(1.0);
 				soundfile.close;
 				this.prCreateSynthDef;
@@ -191,7 +192,7 @@ RDSoundFilePlayer {
 	}
 
 	prSetStartPosition {
-		if(direction.isNegative, {
+		if((rate * direction).isNegative, {
 			startPosition = upperBoundary;
 		}, {
 			startPosition = lowerBoundary;
@@ -211,6 +212,7 @@ RDSoundFilePlayer {
 			\hiBoundary, upperBoundary,
 			\startPosition, startPosition,
 			\rate, rate*direction,
+			\outBus,this.outBus
 		];
 		arguments.postln;
 		{
@@ -337,6 +339,7 @@ RDSoundFilePlayer {
 			var envelope;
 
 			startPosition = Latch.ar(startPosition, t_start);
+			rate = rate * BufSampleRate.kr(buffer.bufnum);
 			sweep = Sweep.ar(t_start, rate) + startPosition;
 
 			inRange = InRange.kr(
