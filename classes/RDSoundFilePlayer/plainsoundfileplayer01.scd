@@ -1,11 +1,12 @@
-(
-~model = SoundFilePlayerOSC.new;
 
+~model = SoundFilePlayerOSC.new;
+~controller = SoundFilePlayerController.new(~model);
 /************************************
 *
 * CONTROLLER
 *
 ****/
+/*
 ~controller=SimpleController.new(~model);
 ~controller.put(\soundfile, {arg model, what;
 	~soundFileView.soundfile = model.soundfile;
@@ -44,6 +45,11 @@
 	});
 };
 
+~loopModes = (\noLoop: 0, \loop: 1 );
+~controller.put(\loopMode, {arg model;
+	~loopModeMenu.value_(~loopModes.at(model.loopMode));
+});
+*/
 
 /************************************
 *
@@ -133,7 +139,20 @@
 	});
 };
 
+//LoopMode
+~loopModeMenu = EZPopUpMenu(
+			parentView:~window.view,
+			bounds: 160@22,
+			label:"Loop Modus ",
+	    items: [
+				'No Loop' -> {~model.loopMode_(\noLoop);},
+		    'Loop' -> {~model.loopMode_(\loop);},
+	    ]
+		);
+
 ~soundfileLength = StaticText(~window.view, 100@20);
+
+
 
 
 //rate
@@ -171,12 +190,13 @@
 	ControlSpec(0,inf),
 	{arg view; ~model.out_(view.value;)},
 	~model.out,numberWidth:40);
-)
+
 
 ~soundfile
 
 ~model.dump
-
+~model.loopMode_(\loop)
+~loopModeMenu.value_(0)
 s.scope
 
 

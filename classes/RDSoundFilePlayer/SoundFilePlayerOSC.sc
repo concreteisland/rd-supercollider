@@ -29,12 +29,10 @@ SoundFilePlayerOSC {
 					if(this.node.nodeID == nodeID
 						&& replyID == 0
 						&& cmdName=='/SweepPosition', {
-							("Node "++nodeID++" is currently at position "++value).postln;
 							if (this.isInBoundaries(value), {
 								this.playheadPosition=value;
 								this.changed(\playheadPosition);
 								}, {
-									("Node "++nodeID++" reached end at "++value).postln;
 									this.reachedEndAction;
 							})
 					});
@@ -54,7 +52,7 @@ SoundFilePlayerOSC {
 				\pan, this.pan,
 				\rate,this.rate,
 				\t_trig,1,
-				\startPosition,this.startPosition,
+				\startPosition,this.playheadPosition,
 				\endPosition,this.endPosition,
 			]));
 		});
@@ -86,18 +84,13 @@ SoundFilePlayerOSC {
 		this.changed(\playState);
 	}
 
-	reCue {arg position=0;
-		"recue".postln;
-
-	}
-
 	soundfile_ {arg newSoundfile;
 		soundfile = newSoundfile;
 		this.changed(\soundfile);
 		this.buffer_(
 			Buffer.cueSoundFile(
 				Server.local,this.soundfile.path,0,2,
-				bufferSize:(Server.local.options.blockSize * (2**4))
+				bufferSize:(Server.local.options.blockSize * (2**5))
 		  )
 		);
 		this.setBoundaries(0,soundfile.numFrames);
@@ -106,6 +99,11 @@ SoundFilePlayerOSC {
 	buffer_ {arg newBuffer;
 		buffer = newBuffer;
 		this.changed(\buffer);
+	}
+
+	loopMode_{arg newLoopMode;
+		loopMode = newLoopMode;
+		this.changed(\loopMode);
 	}
 
 	freeAll {
@@ -168,13 +166,12 @@ SoundFilePlayerOSC {
 	}
 
 	isInBoundaries {arg position;
-		var isInBoundaries=false;
+		var isInBoundaries=true;
 		if(this.startPosition.notNil && this.endPosition.notNil, {
-			var lo = min(this.startPosition, this.endPosition);
-			var hi = max(this.startPosition, this.endPosition);
-			isInBoundaries = ((lo<=position) && (position<=hi))
-		}, {
-			isInBoundaries=true;
+			isInBoundaries = position.inclusivelyBetween(
+				min(this.startPosition, this.endPosition),
+				max(this.startPosition, this.endPosition)
+			);
 		});
 		^isInBoundaries;
 	}
@@ -182,6 +179,9 @@ SoundFilePlayerOSC {
 	reachedEndAction {
 		if(this.loopMode==\noLoop, {
 			this.stop;
+		});
+		if(this.loopMode==\loop, {
+			this.movePlayhead(this.startPosition);
 		});
 	}
 

@@ -13,14 +13,12 @@ SweepWithEnd {
 			replyID: 0
 		);
 
-		//SendTrig.ar(notInRange,0,1);
 		SendReply.ar(
 			trig:notInRange,
 			cmdName:'/SweepReachedEnd',
 			values:sweep,
 			replyID: 1
 		);
-		//FreeSelf.kr(notInRange);
 		^sweep;
 	}
 }
