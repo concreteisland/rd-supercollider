@@ -260,23 +260,7 @@ RDSoundFilePlayer {
 		});
 	}
 
-	prBoundary {
-		"prBoundary".postln;
-		//this.prEndSynth;
 
-		if(loopMode == loopModeLooping,{
-			direction = 1;
-		});
-
-		if(loopMode == loopModePingPong,{
-			direction = direction.neg;
-		});
-		this.prSetStartPosition;
-
-		if(loopMode != loopModeNoLoop, {
-			this.prCreateSynth;
-		});
-	}
 
 	prCreateOSCResponders {
 		var newOscResponders = List.new;
@@ -290,7 +274,20 @@ RDSoundFilePlayer {
 					"received boundary reply from node % \n".postf(nodeID);
 					if(synth.notNil && synth.nodeID == nodeID, {
 						synth.postln;
-						this.prBoundary;
+
+						if(loopMode == loopModeLooping,{
+							direction = 1;
+						});
+
+						if(loopMode == loopModePingPong,{
+							direction = direction.neg;
+						});
+						this.prSetStartPosition;
+
+						if(loopMode != loopModeNoLoop, {
+							this.prCreateSynth;
+						});
+
 					});
 				},
 				oscPathBoundary,
