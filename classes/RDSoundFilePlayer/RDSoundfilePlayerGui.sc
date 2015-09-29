@@ -18,17 +18,25 @@ RDSoundfilePlayerGui : ObjectGui {
 		soundfileView = SoundFileView.new(view, 362@144);
 		soundfileView.timeCursorOn = true;
 		soundfileView.timeCursorColor = Color.white;
-		soundfileView.setSelectionColor (1, Color.clear);
+		soundfileView.setSelectionColor (1, Color.red);
 		soundfileView.mouseUpAction = {arg soundfileView, x, y;
-			var currentSelection, lowerBoundary, upperBoundary;
-			currentSelection = soundfileView.selection(soundfileView.currentSelection);
-			lowerBoundary = currentSelection[0];
-			upperBoundary = lowerBoundary + currentSelection[1];
-			model.setBoundaries(lowerBoundary,upperBoundary);
+			var tempSelection, lowerBoundary, upperBoundary;
+			tempSelection = soundfileView.selection(1);
+			lowerBoundary = tempSelection[0];
+			upperBoundary = lowerBoundary + tempSelection[1];
+			if(upperBoundary.absdif(lowerBoundary) > 1, {
+				model.setBoundaries(lowerBoundary,upperBoundary);
+			});
+
+			soundfileView.currentSelection_(0);
+			soundfileView.setSelection(1,[0,0]);
 		};
 		soundfileView.mouseDownAction = {arg soundfileView, x, y;
+			"x: % y:%\n".postf(x,y);
+			soundfileView.currentSelection_(1);
 		};
-		soundfileView.mouseMoveAction = {};
+		soundfileView.mouseMoveAction = {arg soundfileView, x, y;
+		};
 		this.updateSoundfile;
 
 		layout.startRow;
@@ -65,9 +73,10 @@ RDSoundfilePlayerGui : ObjectGui {
 			model.stop;
 		};
 
-		mouseClickModeButton = Button(view, 20@20);
+		mouseClickModeButton = Button(view, 40@20);
 		mouseClickModeButton.states = [
 			["Select", Color.white, Color.green(0.4)],
+			["Extend", Color.white, Color.blue(0.5)],
 			["Move", Color.white, Color.red(0.5)]
 		];
 		mouseClickModeButton.action = {};
@@ -139,16 +148,19 @@ RDSoundfilePlayerGui : ObjectGui {
 
 	updateSoundfile {
 		AppClock.sched(0.0,{
-			var currentSelection = soundfileView.selection(soundfileView.currentSelection);
-			var lowerBoundary = currentSelection[0];
-			var upperBoundary = lowerBoundary + currentSelection[1];
+			var boundarySelection = soundfileView.selection(0);
+			var lowerBoundary = boundarySelection[0];
+			var upperBoundary = lowerBoundary + boundarySelection[1];
 			if((model.lowerBoundary != lowerBoundary) || (model.upperBoundary != upperBoundary), {
 				var selection = [
 					model.lowerBoundary,
 					model.upperBoundary - model.lowerBoundary
 				];
-				soundfileView.setSelection(soundfileView.currentSelection,selection);
+				selection.postln;
+				soundfileView.setSelection(0,selection);
 			});
+			soundfileView.timeCursorPosition_(model.position);
+			nil;
 		});
 		if(model.soundfile != soundfileView.soundfile, {
 			soundfileView.soundfile = model.soundfile;
@@ -159,10 +171,6 @@ RDSoundfilePlayerGui : ObjectGui {
 			if(soundfileView.soundfile.isOpen, {
 				soundfileView.soundfile.close;
 			});
-		});
-		AppClock.sched(0.0,{
-			soundfileView.timeCursorPosition_(model.position);
-			nil;
 		});
 	}
 

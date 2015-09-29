@@ -16,7 +16,10 @@
 
 ~oscar.playerGui.soundfileView.selection(~oscar.playerGui.soundfileView.currentSelection)
 
-
+~oscar.playerGui.soundfileView.mouseDownAction = {arg soundfileView, x, y;
+	"mouseDown".postln;
+	~oscar.playerGui.soundfileView.currentSelection_(2);
+};
 
 
 
@@ -44,7 +47,52 @@ true || false
 		};
 
 
-~oscar.playerGui.soundfileView.mouseDownAction = {arg soundfileView, x, y;
+
+~oscar.playerGui.soundfileView.inspect
+
+m = (~oscar.playerGui.soundfileView.scrollPos * ~oscar.playerGui.soundfileView.soundfile.numFrames);
+n = (m - ~oscar.playerGui.soundfileView.viewFrames);
+
+~zoom = ~oscar.playerGui.soundfileView.viewFrames / ~oscar.playerGui.soundfileView.soundfile.numFrames;
+
+~framesPerPixel = ~oscar.playerGui.soundfileView.viewFrames / 362;
+
+~xToFrame = {arg x;
+	var framesPerPixel = ~oscar.playerGui.soundfileView.viewFrames /  ~oscar.playerGui.soundfileView.bounds.width;
+	var zoom = ~oscar.playerGui.soundfileView.viewFrames / ~oscar.playerGui.soundfileView.soundfile.numFrames;
+	var scrollRange = ~oscar.playerGui.soundfileView.soundfile.numFrames - ~oscar.playerGui.soundfileView.viewFrames;
+	var frameLeft = ~oscar.playerGui.soundfileView.scrollPos * scrollRange;
+	var framesFromLeft = x * framesPerPixel;
+	var xFrame = frameLeft + framesFromLeft;
+
+	xFrame;
+}
+
+
+~frameToX = {arg frame;
+	var framesPerPixel = ~oscar.playerGui.soundfileView.viewFrames / ~oscar.playerGui.soundfileView.bounds.width;
+	var zoom = ~oscar.playerGui.soundfileView.viewFrames / ~oscar.playerGui.soundfileView.soundfile.numFrames;
+	var scrollRange = ~oscar.playerGui.soundfileView.soundfile.numFrames - ~oscar.playerGui.soundfileView.viewFrames;
+	var frameLeft = ~oscar.playerGui.soundfileView.scrollPos * scrollRange;
+	var framesFromLeft = frame - frameLeft;
+	var x = framesFromLeft / framesPerPixel;
+	x;
+}
+
+~xToFrame.value(0)
+~oscar.playerGui.soundfileView.zoomToFrac(0.9)
+~oscar.playerGui.soundfileView.scrollPos
+~oscar.playerGui.soundfileView.scrollTo(0)
+
+~frameToX.value(337635)
+
+
+
+
+458029 - 379499.28262825
+
+
+mouseDownAction = {arg soundfileView, x, y;
 	soundfileView.setSelectionColor(1,Color.red);
 	soundfileView.currentSelection_(1);
 };
