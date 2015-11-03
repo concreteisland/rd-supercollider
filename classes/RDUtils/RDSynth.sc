@@ -1,45 +1,194 @@
-RDSynthConfig {
-	var <name;
-	var arguments;
-	var <target;
-	var <addAction;
+RDSynth {
+	var synthNode;
+	var rdSynthConfig;
+	var originalSynthConfig;
+	var attributes;
+	var statusPlaying = \playing;
+	var statusPaused = \paused;
+	var statusStopped = \stopped;
+	var configController;
 
-
-	*new {arg name, arguments, target, addAction;
+	*new {arg rdSynthConfig, arguments;
 		var instance = super.new;
-		instance.initRDSynthConfig(name, arguments, target, addAction);
+		instance.initRDSynth(rdSynthConfig, arguments);
 		^instance;
 	}
 
-	initRDSynthConfig {arg argName, argArguments, argTarget, argAddAction;
-		name = argName;
-		arguments = Dictionary.newFrom(argArguments);
-		target = argTarget;
-		addAction = argAddAction ? \addToHead;
+	initRDSynth {arg argRDSynthConfig, arguments;
+		originalSynthConfig = argRDSynthConfig;
+		//TODO controller for originalSynthCOnfig
+		rdSynthConfig = RDSynthConfig.new(
+			originalSynthConfig.rdSynthDef,
+			originalSynthConfig.synthArgumentsValues.getPairs,
+			originalSynthConfig.target,
+			originalSynthConfig.addAction
+		);
+		configController = this.initConfigController(rdSynthConfig);
+		this.performList(\set,arguments);
+		attributes = ();
+		this.play;
 	}
 
-	arguments {
-		^arguments.getPairs;
-	}
+	initConfigController {arg config;
+		var controller = SimpleController.new(config);
 
-	arguments_ {arg argArguments, add=false;
-		if(add, {
-			arguments = Dictionary.newFrom(this.arguments ++ argArguments);
-		}, {
-			arguments = Dictionary.newFrom(argArguments);
+		controller.put(\set, {arg theChanged, what, value;
+			if(this.isPlaying || this.isPaused, {
+				var keys = Dictionary.newFrom(value).keys.asArray;
+				var arguments = rdSynthConfig.synthArgumentsValuesForSynth(*keys);
+				synthNode.performList(\set,arguments.getPairs);
+			});
 		});
-		^arguments;
+
+		^controller;
 	}
 
-	argument {arg argName;
-		^arguments[argName];
+	play {
+		//TODO: possibility to schedule length of play
+		if(this.isPaused, {
+			{
+				synthNode.run(true);
+				synthNode.server.sync;
+			}.forkIfNeeded;
+		}, {
+			if(this.isStopped, {
+					this.createSynth;
+			});
+		});
 	}
 
-	argument_ {arg argName, argValue;
-		arguments[argName] = argValue;
-		^this.argument(argName);
+	stop {
+		//TODO:
+		if(not(this.isStopped), {
+			synthNode.free;
+		});
+	}
+
+	forceStop {
+		if(not(this.isStopped), {
+			synthNode.free;
+		});
+	}
+
+	pause {
+		if(this.isPlaying, {
+			{
+				synthNode.run(false);
+				synthNode.server.sync;
+			}.forkIfNeeded;
+		});
+	}
+
+	status {
+		if(synthNode.notNil, {
+			if(synthNode.isPlaying, {
+				if(synthNode.isRunning, {
+					^statusPlaying;
+				}, {
+					^statusPaused;
+				});
+			}, {
+				^statusStopped;
+			})
+		}, {
+			^statusStopped;
+		});
+	}
+
+	isPlaying {
+		^(this.status == statusPlaying);
+	}
+	isPaused {
+		^(this.status == statusPaused);
+	}
+	isStopped {
+		^(this.status == statusStopped);
+	}
+
+	createSynth {
+		if(rdSynthConfig.rdSynthDef.preCreationFunction.notNil, {
+			rdSynthConfig.rdSynthDef.preCreationFunction.value(this);
+		});
+
+		synthNode = Synth(
+			rdSynthConfig.rdSynthDef.synthDefName,
+			rdSynthConfig.synthArgumentsValuesForSynth.getPairs,
+			rdSynthConfig.target,
+			rdSynthConfig.addAction
+		);
+
+		synthNode.register;
+
+		if(rdSynthConfig.rdSynthDef.postCreationFunction.notNil, {
+			rdSynthConfig.rdSynthDef.postCreationFunction.value(this);
+		});
+
+		synthNode.onFree({
+			if(rdSynthConfig.rdSynthDef.postFreeFunction.notNil, {
+				rdSynthConfig.rdSynthDef.postFreeFunction.value(this);
+			});
+		});
+	}
+
+	set {arg ... args;
+		rdSynthConfig.performList(\set, args);
+		rdSynthConfig.changed(\set, args);
 	}
 }
+
+
+RDSynthArgument {
+	var <>attributes;
+	var rdSynthDefArgument;
+
+	*new {arg rdSynthDefArgument;
+		var instance = super.new;
+		instance.initRDSynthArgument(rdSynthDefArgument);
+		^instance;
+	}
+
+	initRDSynthArgument {arg argRDSynthDefArgument;
+		rdSynthDefArgument = argRDSynthDefArgument;
+		attributes = Dictionary.new;
+		this.value_(*rdSynthDefArgument.defaultValue;)
+	}
+
+	name {
+		^rdSynthDefArgument.name;
+	}
+
+	isNodeArg {
+		^rdSynthDefArgument.isNodeArg;
+	}
+
+	value {
+		^rdSynthDefArgument.argumentStrategy.getValue(this);
+	}
+
+	valueForSynth {
+		^rdSynthDefArgument.argumentStrategy.getValueForSynth(this);
+	}
+
+	value_{arg ... args;
+		rdSynthDefArgument.argumentStrategy.setValue(this, *args);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 RDSynthTrack {
 	var <>synthConfig;
@@ -100,63 +249,6 @@ RDSynthTrack {
 	}
 }
 
-/*************************************/
-/*
-RDSynthLauncher {
-	var <>synthConfigs;
-	var <>tracks;
-
-	*new {
-		var instance = super.new;
-		instance.initRDSynthLauncher;
-		^instance;
-	}
-
-	initRDSynthLauncher {
-		synthConfigs = Dictionary.new;
-		tracks = Dictionary.new;
-	}
-
-	setConfig {arg key, config;
-		synthConfigs[key] = config;
-	}
-
-	on {arg trackKey, configKey, arguments, sustain;
-		var track = tracks[trackKey];
-		var config = synthConfigs[configKey];
-
-		if(track.isNil, {
-			track = RDSynthTrack.new(config);
-			tracks[trackKey] = track;
-		});
-
-		track.on(arguments, sustain);
-	}
-
-	off {arg trackKey, offArg=\gate, offValue=0;
-		var track = tracks[trackKey];
-		if(track.notNil, {
-			track.off(offArg, offValue);
-		})
-	}
-
-	forecOff {arg trackKey;
-		var track = tracks[trackKey];
-		if(track.notNil, {
-			track.forceOff;
-		})
-	}
-
-	setArg {arg trackKey, argName, argValue;
-		var track = tracks[trackKey];
-		if(track.notNil, {
-			track.setArg(argName, argValue);
-		})
-	}
-}
-*/
-/*************************************/
-
 RDPatternLauncher {
 	var <>patterns;
 	var <>patternPlayers;
@@ -200,75 +292,14 @@ RDPatternLauncher {
 }
 
 
-RDSynthLauncher {
-	var <>synthConfigs;
-	var <>synthNodes;
 
-	*new {
-		var instance = super.new;
-		instance.initRDSynthLauncher;
-		^instance;
-	}
 
-	initRDSynthLauncher {
-		synthConfigs = Dictionary.new;
-		synthNodes = Dictionary.new;
-	}
 
-	setConfig {arg key, config;
-		synthConfigs[key] = config;
-	}
 
-	on {arg trackKey, configKey, arguments, sustain;
-		var config = synthConfigs[configKey];
-		var synthDefName = config.name;
-		var target = config.target;
-		var addAction = config.addAction;
-		arguments = config.arguments ++ arguments;
 
-		arguments.postln;
 
-		if(target.notNil, { target = target.value });
 
-		if(
-			not(
-				and(
-					synthNodes[trackKey].notNil,
-					synthNodes[trackKey].isPlaying
-				)
-			), {
-				{
-				synthNodes[trackKey] = Synth(
-					synthDefName,
-					arguments,
-					target,
-					addAction
-				).register;
 
-				if(sustain.notNil, {
-					sustain.yield;
-					this.off(trackKey)
-				})
-			}.fork;
 
-		});
-	}
-
-	off {arg trackKey, offArg=\gate, offValue=0;
-		this.setArg(trackKey, offArg, offValue);
-		synthNodes[trackKey] = nil;
-	}
-
-	forecOff {arg trackKey;
-		synthNodes[trackKey].free;
-		synthNodes[trackKey] = nil;
-	}
-
-	setArg {arg trackKey, argName, argValue;
-		if(and(synthNodes[trackKey].notNil,synthNodes[trackKey].isPlaying), {
-				synthNodes[trackKey].set(argName, argValue);
-		});
-	}
-}
 
 
