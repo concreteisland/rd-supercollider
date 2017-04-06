@@ -1,6 +1,5 @@
-+ Soundfile {
-	frameForTime {
-		arg time=0;
++ SoundFile {
+	frameForTime {arg time=0;
 		 ^(time*this.sampleRate);
-}
+	}
 }
