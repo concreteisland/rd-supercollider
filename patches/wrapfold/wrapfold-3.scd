@@ -56,34 +56,47 @@ Instr(\grains, {arg
 	grainPitch, grainPitchVar,
 	bufnum,envbufnum;
 
+	var effectiveGrainRate, effectiveGrainPosition, effectiveGrainDuration, effectiveGrainPitch;
 	var grainBuf;
 	var grainTrigger;
 	var lfos, lfos2;
+	var density;
+	var grainChangeRate;
 
 	lfos = Instr(\duty).ar(0.1);
-	lfos2 = Instr(\duty).ar(1);
+	lfos2 = Instr(\duty).ar(2);
 
-	grainRate = lfos[3].lincurve(0,1,40,120,1);
-	grainRate = grainRate + LFDNoise0.kr(grainRate,mul:grainRateVar);
-	grainTrigger = Impulse.kr(grainRate);
+	//grainRate = lfos[3].lincurve(0,1,500,700,0);
+	effectiveGrainRate = grainRate + LFDNoise0.kr(grainRate,mul:grainRateVar);
+	grainTrigger = Impulse.ar(effectiveGrainRate);
 
-	grainPosition = lfos[0].linlin(0,1,0.84,0.85);
+	grainPosition = A2K.kr(lfos2[0]).linlin(0,1,0.03,0.9);
+	//grainPosition = SinOsc.kr(0.1).range(0,1);
 	grainPositionVar = TRand.kr(grainPositionVar * (-1), grainPositionVar, grainTrigger);
-	grainPosition = grainPosition + grainPositionVar;
+	effectiveGrainPosition = grainPosition + grainPositionVar;
 
-	grainDuration = lfos[2].lincurve(0,1,0.03,0.2,-4);
+	//grainDuration = lfos[2].linlin(0,1,0.001,grainDuration);
 	grainDurationVar = TRand.kr(grainDurationVar * (-1), grainDurationVar,grainTrigger);
-	grainDuration = grainDuration + grainDurationVar;
+	effectiveGrainDuration = grainDuration + grainDurationVar;
 
 	grainPitchVar = TRand.kr(grainPitchVar * (-1), grainPitchVar, grainTrigger);
-	grainPitch = grainPitch + grainPitch;
+	effectiveGrainPitch = grainPitch + grainPitch;
+
+
+	density = grainRate * grainDuration;
+	density = density.lag(0.1);
+	density.poll(label:\density);
+
+	grainChangeRate = HPZ1.kr(grainPosition,(2*(10**5))).abs;
+	grainChangeRate = grainChangeRate.lag(0.1).abs;
+	grainChangeRate.poll(label:\grainChangeRate);
 
 	grainBuf = GrainBuf.ar(2,
 		grainTrigger,
-		grainDuration,
+		effectiveGrainDuration,
 		bufnum,
-		grainPitch,
-		grainPosition,
+		effectiveGrainPitch,
+		effectiveGrainPosition,
 		4,
 		0,
 		envbufnum
@@ -91,20 +104,21 @@ Instr(\grains, {arg
 	grainBuf;
 });
 )
-
-
-~buffer = Buffer.readChannel(s,
-	Platform.resourceDir +/+ "sounds/julio2/sound-sources/teufel.wav",
-	channels:0
-);
-
-Ndef(\grains).clear;
 Ndef(\grains, Instr(\grains).func)
-Ndef(\grains).set(\grainRate, 80, \grainRateVar, 1);
-Ndef(\grains).set(\grainPosition, 0.1, \grainPositionVar, 0.01);
-Ndef(\grains).set(\grainDuration, 0.2, \grainDurationVar, 0.1);
-Ndef(\grains).set(\grainPitch, 1
-	, \grainPitchVar, 0.01);
+Ndef(\grains).clear;
+
+~buffer = Buffer.readChannel(s,Platform.resourceDir +/+ "sounds/julio2/sound-sources/automat.wav", channels:0);
+~buffer = Buffer.readChannel(s,Platform.resourceDir +/+ "sounds/julio2/sound-sources/western/loop.wav", channels:0);
+
+
+
+Ndef(\grains).set(\grainRate, 500, \grainRateVar, 440);
+Ndef(\grains).set(\grainPosition, 0.71, \grainPositionVar, 0.008);
+Ndef(\grains).set(\grainDuration, 0.07, \grainDurationVar, 0.007);
+Ndef(\grains).set(\grainPitch,0.6, \grainPitchVar, 0.01);
 Ndef(\grains).set(\bufnum, ~buffer.bufnum, \envbufnum, -1);
 Ndef(\grains).play
+Ndef(\grains).stop
+
+Ndef(\grains)[0]
 
