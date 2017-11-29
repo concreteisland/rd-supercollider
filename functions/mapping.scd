@@ -1,19 +1,22 @@
 ({
 	var line, mapped;
-	var segments, curves;
+	var sourceSegments, targetSegments, curves;
 	
-	segments = [0.0, 0.4,1.0];	
-	curves =      [-3,1];
+	sourceSegments = [0.0, 0.2, 0.5, 0.9, 1.0];	
+	targetSegments =  [0.0, 0.5, 0.55, 0.7, 1.0];
+	curves =                [    -3,   1,     0,    5];
 	
 	line = Line.ar(0,1,0.01);	
 	
 	mapped = 0;
-	segments.doAdjacentPairs({arg a, b, i;
+	sourceSegments.doAdjacentPairs({arg a, b, i;
 		mapped = mapped + (
 			InRange.ar(line,a,b) * 
-			line.lincurve(a,b,a,b,curves.wrapAt(i))
+			line.lincurve(a,b,targetSegments[i],targetSegments[i+1],curves.wrapAt(i))
 		);
 	});	
 	[line, mapped];
 }.plot)
+
+
 
