@@ -16,9 +16,9 @@ f = {arg segments = 1, controlPointsPerSegment = 1;
 	}).clump(controlPointsPerSegment);	
 	
 	[points,controlPoints].lace(((segments+1)*2)-1);
-}
+};
 
 
-b = BezierSpline(*f.value(2, 3))
+b = BezierSpline(*f.value(4, 3));
 b.gui;
 )
