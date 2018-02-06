@@ -25,12 +25,13 @@ Instr(\cell, {arg
 
 	var cap, capTrigger, sh1, sh2, osc;
 
-	#cap, capTrigger = Instr(\hpzCap).ar(in, max, trigger);
+	#cap, capTrigger = Instr(\hpzCap).ar(in, max, 0);
 
-	sh1 = Latch.ar(cap, trigger2);
-	sh2 = Latch.ar(in2, capTrigger);
+	cap = cap.linlin(0,max,0,1);
+	sh1 = Latch.ar(cap, trigger);
+	sh2 = Latch.ar(in2.linlin(-1,1,0,1), capTrigger);
 
-	osc = SinOsc.ar(sh1.linlin(0,max,50,70),0);
+	osc = SinOsc.ar(sh1.linlin(0,1,5,7),0,sh2);
 
 	[cap, capTrigger, sh1, sh2, osc];
 });
@@ -42,27 +43,45 @@ Instr(\cell, {arg
 
 ~buffer = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav");
 
+
 (
-{
+Ndef(\capCellsInput, {
+	var snd, onset, onsetSnd;
+	snd = PlayBuf.ar(1,~buffer.bufnum,loop:1);
+	onset = Coyote.kr(snd);
+	onsetSnd = SinOsc.ar * EnvGen.kr(Env.perc(0.01,0.1),onset);
+	//[snd, onsetSnd];
+	[snd, K2A.ar(onset)];
+});
+)
+
+Ndef(\capCellsInput).play
+Ndef(\capCellsInput).stop
+Ndef(\capCellsInput).clear
+
+
+(
+Ndef(\capCells, {
 	var in, max, trigger, in2, trigger2;
 	var cell1Cap, cell1CapTrigger, cell1Sh1, cell1Sh2, cell1Osc;
 	var cell2Cap, cell2CapTrigger, cell2Sh1, cell2Sh2, cell2Osc;
 	var fbNode;
+	var snd;
 
-	in = PlayBuf.ar(1,~buffer.bufnum,loop:1);
-	max = 30;
-	//trigger = Impulse.ar(3);
-	trigger2 = Impulse.ar(10);
+
+	#in, trigger = Ndef(\capCellsInput).ar;
+	max = 130;
 	in2 = SinOsc.ar(100);
 
 	#cell1Cap, cell1CapTrigger, cell1Sh1, cell1Sh2, cell1Osc = Instr(\cell).ar(
 		in,
 		max,
-		1,
-		trigger2,
+		trigger,
+		0,
 		in2
 	);
 
+	/*
 	#cell2Cap, cell2CapTrigger, cell2Sh1, cell2Sh2, cell2Osc = Instr(\cell).ar(
 		cell1Osc,
 		cell1Sh1,
@@ -70,13 +89,23 @@ Instr(\cell, {arg
 		cell1CapTrigger,
 		cell1Sh2,
 	);
+	*/
+
+	snd = SinOsc.ar([cell1Sh1,cell1Sh2].linexp(0,1,50,1000),0,0.3);
+
+	snd.poll;
 
 	[
-		in,
-		//cell1Cap, cell1CapTrigger, cell1Sh1, cell1Sh2, cell1Osc,
-		cell2Cap, cell2CapTrigger, cell2Sh1, cell2Sh2, cell2Osc,
-	] * [
-		1,max.reciprocal,1,max.reciprocal,1,1,
+		in, trigger,
+		cell1Cap, cell1CapTrigger, cell1Sh1, cell1Sh2, cell1Osc,
+		//cell2Cap, cell2CapTrigger, cell2Sh1, cell2Sh2, cell2Osc,
 	];
-}.plot(4.3);
+
+	snd;
+})
 )
+
+Ndef(\capCells).plot(1)
+Ndef(\capCells).stop
+Ndef(\capCells).play
+Ndef(\capCells).clear
