@@ -1,40 +1,38 @@
 (
 Instr(\capacitor, {arg in = 0, max=1, trigger = 1;
 	var signal, outTrigger;
-	signal = Phasor.ar(trigger, in, 0, max, 0);
+	signal = Phasor.ar(trigger, in.thresh(0), 0, max, 0);
 	outTrigger = (HPZ1.ar(signal) < 0);
 	[signal, outTrigger]
 });
 
-Instr(\capacitorCell, {arg 
-	in, capacity, triggerRelease,
+Instr(\capacitorCell, {arg
+	in,
+	capacity,
+	triggerRelease,
+	triggerSwitch,
+	shape,
 	sLo, sHi,
-	fb, fbDelay, fbMaxDelay,
-	inShape, outShape, fbShape;
-	
+	fb, fbDelay;
+
 	var fbNode, feedback;
-	var capacitor, capTrigger;
-	var shTrigger, sh;
-	
-	//fbNode = FbNode(1,fbMaxDelay);
-	//feedback = fbNode.delay(fbDelay);
+	var capacitor, capTrigger, sampleAndHold, schmidt;
+
+	fbNode = FbNode(1,1,4);
+	feedback = fbNode.delay(fbDelay);
 	//feedback = feedback.lincurve(0,1,0,1,fbShape);
-	//feedback = feedback * fb;
-	
-	in = in.abs.clip(0,1);
-	//in = in + feedback;
-	//in = in.lincurve(0,1,0,1,inShape); 
-	
+	feedback = feedback * fb;
+	in = in + feedback;
+
 	#capacitor, capTrigger = Instr(\capacitor).ar(in, capacity, triggerRelease);
 	capacitor = capacitor.linlin(0,capacity,0,1);
-	//capacitor = capacitor.lincurve(0,1,0,1,outShape);
-	//fbNode.write(capacitor);
-	
-	shTrigger = Schmidt.ar(in, sLo, sHi);
-	in.poll;
-	sh = Latch.ar(capacitor, shTrigger);
-	
-	[capacitor, capTrigger, sh];
+	capacitor = capacitor.lincurve(0,1,0,1,shape);
+	fbNode.write(capacitor);
+
+	sampleAndHold = Latch.ar(capacitor, triggerSwitch);
+	schmidt = HPZ1.ar(Schmidt.ar(sampleAndHold, sLo, sHi))>0;
+
+	[capacitor, capTrigger, sampleAndHold, schmidt];
 });
 
 Instr(\capacitorCellsInput, {arg bufnum;
@@ -44,38 +42,78 @@ Instr(\capacitorCellsInput, {arg bufnum;
 });
 
 Instr(\capacitorCells, {arg bufnum,
-	capacity1,
-	sLo1, sHi1,
-	fb1, fbDelay1, fbMaxDelay1,
-	inShape1, outShape1, fbShape1;	
-	
-	var in, triggerRelease;
-	var cell1Cap, cell1CapTrigger, cell1Sh;
+	capacity1, shape1, sLo1, sHi1, fb1, fbDelay1,
+	capacity2, shape2, sLo2, sHi2, fb2, fbDelay2;
+
+	var in, triggerRelease, triggerSwitch;
+	var cell1Cap, cell1CapTrigger, cell1Sh, cell1Schmidt;
+	var cell2Cap, cell2CapTrigger, cell2Sh, cell2Schmidt;
 	var snd;
+	var fbNode, feedback;
 
 	in = Instr(\capacitorCellsInput).ar(bufnum);
-	triggerRelease = Coyote.kr(in);
-	
+	snd = in;
+	in = in[0];
+	triggerSwitch = Coyote.kr(in);
 
-	#cell1Cap, cell1CapTrigger, cell1Sh = Instr(\capacitorCell).ar(
-		in[0], capacity1, triggerRelease,
+	fbNode = FbNode(2,1,4);
+	feedback = fbNode.delay(SampleDur.ir);
+
+	triggerSwitch = triggerSwitch + feedback[0];
+	triggerRelease = feedback[1];
+
+	#cell1Cap, cell1CapTrigger, cell1Sh, cell1Schmidt = Instr(\capacitorCell).ar(
+		HPZ1.ar(in).abs,
+		capacity1,
+		triggerRelease,
+		triggerSwitch,
+		shape1,
 		sLo1, sHi1,
-		fb1, fbDelay1, fbMaxDelay1,
-		inShape1, outShape1, fbShape1;
+		fb1, fbDelay1
 	);
 
-	[cell1Cap, cell1Sh];
+	#cell2Cap, cell2CapTrigger, cell2Sh, cell2Schmidt = Instr(\capacitorCell).ar(
+		cell1Sh,
+		capacity2,
+		cell1Schmidt,
+		cell1CapTrigger,
+		shape2,
+		sLo2, sHi2,
+		fb2, fbDelay2
+	);
+
+	fbNode.write([cell2CapTrigger, cell2Schmidt]);
+
+	[cell1Cap, cell1CapTrigger, cell1Sh, cell1Schmidt] ++
+	[cell2Cap, cell2CapTrigger, cell2Sh, cell2Schmidt];
 });
-)
-(
-Ndef(\capacitorCells, {
-	var snd = Instr(\capacitorCells).func.value(~buffer.bufnum, 100, 0.1, 0.2);
+//)
+//(
+Ndef(\capacitorCells, {arg bufnum,
+	capacity1, shape1, sLo1, sHi1, fb1, fbDelay1,
+	capacity2, shape2, sLo2, sHi2, fb2, fbDelay2;
+
+	var snd = Instr(\capacitorCells).func.value(
+		bufnum,
+		capacity1, shape1, sLo1, sHi1, fb1, fbDelay1,
+		capacity2, shape2, sLo2, sHi2, fb2, fbDelay2
+	);
 	snd;
 });
 )
 
+(
+Ndef(\capacitorCells).set(
+	\bufnum, ~buffer.bufnum,
+	\capacity1, 1000, \shape1, 3, \sLo1, 0.1, \sHi1, 0.3, \fb1, 0.04, \fbDelay1, 0.8,
+	\capacity2, 10000, \shape2, -0.3, \sLo2, 0.6, \sHi2, 0.7, \fb2, 0.04, \fbDelay2, 0.8
+);
+)
+
 Ndef(\capacitorCells).play
 Ndef(\capacitorCells).plot
+Ndef(\capacitorCells).clear
+Ndef(\capacitorCells).scope
 
 
 
