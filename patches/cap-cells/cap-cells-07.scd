@@ -241,3 +241,37 @@ Instr(\grains,  {arg
 });
 )
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+(
+~results = Array.new(5);
+[1,2,3,4,5].do({arg item, index;
+	var prevOut, new;
+	var prev = ~results.last;
+	prev.postln;
+	if(prev.isNil, {
+		prevOut = 5;
+	}, {
+		prevOut = prev[0];
+	});
+	
+	new = [prevOut * item.pow(2), 3];
+	~results.add(new);
+});
+~results.postln;
+)
+
+
+
+
